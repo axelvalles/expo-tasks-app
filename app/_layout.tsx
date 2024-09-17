@@ -1,37 +1,52 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
+import "reflect-metadata";
+import { Stack } from "expo-router";
+import { Provider } from "inversify-react";
+import { container } from "@/config/di/inversify";
+import * as SplashScreen from "expo-splash-screen";
+import * as Font from "expo-font";
+import { useEffect, useState } from "react";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+function cacheFonts(fonts: any[]) {
+  return fonts.map((font) => Font.loadAsync(font));
+}
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
+    async function loadResources() {
+      try {
+        const fontAssets = cacheFonts([
+          MaterialCommunityIcons.font,
+          MaterialIcons.font,
+        ]);
 
-  if (!loaded) {
-    return null;
+        await Promise.all([...fontAssets]);
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setIsReady(true);
+        // Una vez listo, ocultar la pantalla de splash
+        SplashScreen.hideAsync();
+      }
+    }
+
+    loadResources();
+  }, []);
+
+  if (!isReady) {
+    return null; // Aquí podrías mostrar un indicador de carga si lo deseas
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <Provider container={container}>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
+        <Stack.Screen options={{ headerShown: false }} name="index" />
       </Stack>
-    </ThemeProvider>
+    </Provider>
   );
 }
